@@ -24,8 +24,8 @@ quad_prefixes_q1 = [
     "Q1P2L4RP",
 ]
 
-quad_prefixes_q2 = [name.replace("q1", "q2") for name in quad_prefixes_q1]
-quad_prefixes_q3 = [name.replace("q1", "q3") for name in quad_prefixes_q1]
+quad_prefixes_q2 = [name.replace("Q1", "Q2") for name in quad_prefixes_q1]
+quad_prefixes_q3 = [name.replace("Q1", "Q3") for name in quad_prefixes_q1]
 quad_prefixes = quad_prefixes_q1 + quad_prefixes_q2 + quad_prefixes_q3
 
 t_quads = [(name.lower(), name) for name in quad_prefixes]
