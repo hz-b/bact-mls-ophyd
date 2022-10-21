@@ -11,17 +11,9 @@ from ophyd.status import SubscriptionStatus, AndStatus
 
 def read_orbit_data():
     import pandas as pd
+    from pyml import mls_data
 
-    filename = "/opt/OPI/MapperApplications/Orbit/StandardUser.dat"
-
-    df = pd.read_csv(
-        filename,
-        sep="\s+",
-        header=None,
-    )
-    df.columns = ["name", "x_offset", "y_offset"]
-    df = df.set_index("name")
-    return df
+    return mls_data.bpm_offsets()
 
 
 def bpm_config_data():
@@ -32,7 +24,7 @@ def bpm_config_data():
         find appropriate way to store it
     """
 
-    from PyML import mlsinit
+    from pyml import mlsinit
     import pandas as pd
     import numpy as np
 
@@ -87,7 +79,7 @@ class BPM(BPMR, BPMWaveform):
         """
         rec = bpm_config_data()
 
-        indices = rec.idx.values - 1        
+        indices = rec.idx.values - 1
         self.configure(dict(names=rec.index.values, indices=indices, ))
         self.ds.put(rec.s.values)
 
@@ -101,7 +93,7 @@ class BPM(BPMR, BPMWaveform):
 
         def cb_p(success=False):
             self.log.debug(f"Finished processed data reading with success {success}")
-            
+
         stat_r = BPMR.trigger(self)
         stat_r.add_callback(cb_r)
         stat_p = BPMWaveform.trigger(self)
@@ -117,8 +109,8 @@ class BPM(BPMR, BPMWaveform):
     #    d = BPMR.read(self)
     #    d.update(BPMWaveform.read(self))
     #    return d
-        
-    
+
+
 if __name__ == "__main__":
     # print("#--------")
     # print(bpm_config_data().dtypes)
