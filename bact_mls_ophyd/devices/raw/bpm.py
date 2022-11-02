@@ -20,15 +20,17 @@ class BPM(Device):
 def test_bpm():
     """pytest compatible
     """
-    
+
     bpm = BPM("BPMZ1X003GP", name="bpm")
     if not bpm.connected:
         bpm.wait_for_connection()
-        
+
+    print(bpm.read_configuration())
     stat = bpm.trigger()
     stat.wait(3)
     data = bpm.read()
     bpm_data = data["bpm_packed_data"]["value"]
+    print(bpm_data)
     
 if __name__ == "__main__":
     test_bpm()

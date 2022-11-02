@@ -1,29 +1,22 @@
 """BPM preprocessed data
 """
+import numpy as np
 
-
-from bact_bessyii_mls_ophyd.devices.utils.derived_signal_bpm import BPMWaveform
-
+# from bact_bessyii_mls_ophyd.devices.utils.derived_signal_bpm import BPMWaveform
+from bact_bessyii_mls_ophyd.devices.process.bpm_packed_data import packed_data_to_named_array
 from ..raw.bpm import BPM as BPMR
-from ophyd import Component as Cpt, Device, EpicsSignalRO
+from .bpmElem import BpmElementList, BpmElemPlane, BpmElem
+import functools
+from ophyd import Component as Cpt, Device, EpicsSignalRO, Signal, Kind
 from ophyd.status import SubscriptionStatus, AndStatus
 
 
 def read_orbit_data():
-    import pandas as pd
-
-    filename = "/opt/OPI/MapperApplications/Orbit/StandardUser.dat"
-
-    df = pd.read_csv(
-        filename,
-        sep="\s+",
-        header=None,
-    )
-    df.columns = ["name", "x_offset", "y_offset"]
-    df = df.set_index("name")
-    return df
+    from pyml import mls_data
+    return mls_data.bpm_offsets()
 
 
+@functools.lru_cache(maxsize=1)
 def bpm_config_data():
     """
 
@@ -32,7 +25,7 @@ def bpm_config_data():
         find appropriate way to store it
     """
 
-    from PyML import mlsinit
+    from pyml import mlsinit
     import pandas as pd
     import numpy as np
 
@@ -68,55 +61,120 @@ def bpm_config_data():
     return bpm_data
 
 
-class BPM(BPMR, BPMWaveform):
+
+class BPM(BPMR):
+    """
+    This is the model for a BPM class which specifies a BPM inside a machine.
+    A BPM is
+    TODO: write a description of the model class in details.
+    """
+
+    # List of member attributes for a BPM
 
     n_elements = 256
+    """
+        TODO: Provide such a comment to each member attribute of all classes.
+        default value of the n_element
+        @Member n_elements: this is the number of bpms inside a machine
+        todo: rewrite this comment after discussing with Pierre
+    """
+
+    #  @Member n_valid_bpms out of n_elements these are only active....
+    #  todo: why set this on the model level?
     n_valid_bpms = 32
     skip_unset_second_half = False
+
+    #  @Member ds: it is a signal componenet and it does .....
+    #  A componenet is a descriptor representing a device component (or signal)
+    ds = Cpt(Signal, name="ds", value=np.nan,  )# kind=Kind.config
+    #  @Member indices a signal which determines the index .... what is inside indices
+    indices = Cpt(Signal, name="indices", value=np.nan,   kind=Kind.config )
+    names = Cpt(Signal, name="names", value=np.nan,   kind=Kind.config )
+
+
+
+    #  a constructor for BPM
+    #  **kwargs / **args...  passed an unspecified number of arguments to to the constructor.
+    #  We should know what are we passing to a constructor, todo don't we?
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.standardConfiguration()
 
+    # member function standardConfiguration
+    #  todo: explain what we should be doing in this function
     def standardConfiguration(self):
         """
 
         Todo:
             make this hack a transparent access
         """
+        #  todo: rec = recievable... or?
         rec = bpm_config_data()
+        self.ds.put(rec.s.values)
+
 
         indices = rec.idx.values - 1        
         self.configure(dict(names=rec.index.values, indices=indices, ))
-        self.ds.put(rec.s.values)
+        return
 
         self.x.configure(dict(offset=rec.x_offset.values))
         self.y.configure(dict(offset=rec.y_offset.values))
         self.log.warning("Standard configuration executed")
 
-    def trigger(self):
-        def cb_r(success=False):
-            self.log.debug(f"Finished raw data reading with success {success}")
+    #
+    def splitPackedData(self, data_dic):
+        """
+        @Params: data_dict: data dictionary in a ... format
+        this method will split the packed data into ...
+        """
+        pd = data_dic[self.name + '_packed_data']
+        timestamp = pd["timestamp"]
+        r= packed_data_to_named_array(pd["value"], n_elements=self.n_elements, indices=self.indices.get())
+        d2 = {self.name + "_" + key: dict(value=r[key], timestamp=timestamp) for key, val in r.dtype.descr}
+        return d2
+    @functools.lru_cache(maxsize=1)
+    def dataForDescribe(self):
+        return self.splitPackedData(self.read())
 
-        def cb_p(success=False):
-            self.log.debug(f"Finished processed data reading with success {success}")
-            
-        stat_r = BPMR.trigger(self)
-        stat_r.add_callback(cb_r)
-        stat_p = BPMWaveform.trigger(self)
-        stat_p.add_callback(cb_p)
-        return AndStatus(stat_r, stat_p)
+    def describe(self):
+         d = super().describe()
+         source=d[self.name + '_packed_data']["source"]
+         d2 = {key: dict(source=source + "."+ key, dtype="array", shape=list(val['value'].shape))  for key, val in self.dataForDescribe().items()}
+         d.update(d2)
+         return d
 
-    # def discribe(self):
-    #     d = BPMR.describe(self)
-    #    d.update(BPMWaveform.describe(self))
-    #    return d
+    def read(self):
+        d = super().read()
 
-    # def read(self):
-    #    d = BPMR.read(self)
-    #    d.update(BPMWaveform.read(self))
-    #    return d
+        # r = packed_data_to_scaled(, bpm_parameters=bpm_config_data(),
+        #                          n_valid_items=self.n_valid_bpms, n_elements=self.n_elements)
+        # dataAsItems = list(d.items())
+        # keys = d.keys()
+        # values = d[keys[0]].values()
+        bpmElementList = BpmElementList()
+        n_channels = 8
+        bpm_packed_data_chunks = np.transpose(np.reshape(d["bpm_packed_data"]['value'], (n_channels, -1)))
+        # bpm_packed_data_chunks = [d["bpm_packed_data"]["value"][i:i + 8] for i in range(0, len(d["bpm_packed_data"]["value"]), 8)]
+        for chunk in bpm_packed_data_chunks:
+            bpmElemPlaneX = BpmElemPlane(chunk[0],chunk[1])
+            bpmElemPlaneY = BpmElemPlane(chunk[2],chunk[3])
+            bpmElem = BpmElem(bpmElemPlaneX,bpmElemPlaneY,chunk[4],chunk[5],chunk[6],chunk[7])
+            bpmElementList.addBpmElem(bpmElem)
+
+        # def unpack(chunk):
+        #     bpmElemPlaneX = BpmElemPlane(chunk[0], chunk[1])
+        #     bpmElemPlaneY = BpmElemPlane(chunk[2], chunk[3])
+        #     bpmElem = BpmElem(bpmElemPlaneX, bpmElemPlaneY, chunk[4], chunk[5], chunk[6], chunk[7])
+        #     bpmElementList.addBpmElem(bpmElem)
+        #
+        # bpmElementList = [unpack(chunk) for chunk in bpm_packed_data_chunks]
+        d2 = {self.name + "_bpm_elem_data" : bpmElementList}
+        d.update(self.splitPackedData(d))
+        # self.log.debg()
+        d.update(d)
+        return d
         
     
 if __name__ == "__main__":
