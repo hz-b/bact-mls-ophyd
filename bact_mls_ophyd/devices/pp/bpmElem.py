@@ -18,7 +18,7 @@ class BpmElementList:
         return dict(source="", shape=[32], dtype="array")
 
     def to_dict(self, timestamp):
-        return {'value': np.array(self.bpmElemList, object), 'timestamp': timestamp}
+        return {'value': self.bpmElemList, 'timestamp': timestamp}
 
     @staticmethod
     def to_json(data):
