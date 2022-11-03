@@ -1,5 +1,6 @@
 """BPM preprocessed data
 """
+import jsons
 import numpy as np
 
 # from bact_bessyii_mls_ophyd.devices.utils.derived_signal_bpm import BPMWaveform
@@ -150,7 +151,7 @@ class BPM(BPMR):
             bpm_elem = BpmElem(bpm_elem_plane_x, bpm_elem_plane_y, chunk[4], chunk[5], chunk[6], chunk[7])
             bpm_element_list.add_bpm_elem(bpm_elem)
         bpm_data = {self.name + "_elem_data": bpm_element_list.to_dict(data['bpm_packed_data']['timestamp'])}
-        data.update(bpm_data)
+        data.update(BpmElementList().to_json(bpm_data))
         del data[signal_name]
         return data
 

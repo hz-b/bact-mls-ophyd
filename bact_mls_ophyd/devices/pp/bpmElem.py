@@ -2,6 +2,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+import jsons
+
 
 @dataclass
 class BpmElementList:
@@ -17,6 +19,10 @@ class BpmElementList:
 
     def to_dict(self, timestamp):
         return {'value': np.array(self.bpmElemList, object), 'timestamp': timestamp}
+
+    @staticmethod
+    def to_json(data):
+        return jsons.dump(data)
 
 
 @dataclass
