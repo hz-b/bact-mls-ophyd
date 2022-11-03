@@ -1,18 +1,22 @@
 from dataclasses import dataclass
 
+import numpy as np
+
 
 @dataclass
 class BpmElementList:
     def __init__(self):
         self.bpmElemList = []
 
-    def addBpmElem(self, bpmElem):
-        self.bpmElemList.append(bpmElem)
+    def add_bpm_elem(self, bpm_elem):
+        self.bpmElemList.append(bpm_elem)
 
-    def toDict(self):
-        pass
-    def unDict(self):
-        pass
+    @staticmethod
+    def describe_dict():
+        return dict(source="", shape=[32], dtype="array")
+
+    def to_dict(self, timestamp):
+        return {'value': np.array(self.bpmElemList, object), 'timestamp': timestamp}
 
 
 @dataclass
@@ -25,12 +29,11 @@ class BpmElemPlane:
     rms_raw: int
 
 
-
 @dataclass
-class BpmElem():
-    def __init__(self, bpmElemPlaneX, bpmElemPlaneY, intensity_z, intensity_s, stat, gain_raw):
-        self.x = bpmElemPlaneX
-        self.y = bpmElemPlaneY
+class BpmElem:
+    def __init__(self, bpm_elem_plane_x, bpm_elem_plane_y, intensity_z, intensity_s, stat, gain_raw):
+        self.x = bpm_elem_plane_x
+        self.y = bpm_elem_plane_y
         self.intensity_z = intensity_z
         self.intensity_s = intensity_s
         self.stat = stat
