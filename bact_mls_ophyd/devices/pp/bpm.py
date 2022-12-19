@@ -81,8 +81,7 @@ class BPM(BPMR):
 
     #  @Member n_valid_bpms out of n_elements these are only active....
     #  todo: why set this on the model level?
-    n_valid_bpms = 32
-    skip_unset_second_half = False
+    n_valid_bpms = Cpt(Signal, name="n_valid_bpms", value=-1, kind=Kind.config)
 
     #  @Member ds: it is a signal componenet and it does .....
     #  A componenet is a descriptor representing a device component (or signal)
@@ -99,6 +98,10 @@ class BPM(BPMR):
         super().__init__(*args, **kwargs)
 
         self.standardConfiguration()
+
+    def stage(self):
+        assert(self.n_valid_bpms.get() > 0)
+        super().stage()
 
     # member function standardConfiguration
     #  todo: explain what we should be doing in this function
@@ -145,6 +148,8 @@ class BPM(BPMR):
         n_channels = 8
         signal_name = self.name + "_packed_data"
         bpm_packed_data_chunks = np.transpose(np.reshape(data[signal_name]['value'], (n_channels, -1)))
+        bpm_packed_data_chunks = np.transpose(np.reshape(data[signal_name]['value'], (n_channels, -1)))
+        bpm_packed_data_chunks = bpm_packed_data_chunks[:self.n_valid_bpms.get()]
         for chunk in bpm_packed_data_chunks:
             bpm_elem_plane_x = BpmElemPlane(chunk[0], chunk[1])
             bpm_elem_plane_y = BpmElemPlane(chunk[2], chunk[3])
@@ -163,7 +168,9 @@ if __name__ == "__main__":
     # print(mlsinit.bpm[0])
     # mlsinit.bpm
     # how to combine it with the BPM test of the raw type
-    bpm = BPM("BPMZ1X003GP", name="bpm")
+    prefix = "Pierre:DT:"
+    # bpm = BPM("BPMZ1X003GP", name="bpm")
+    bpm = BPM(prefix + "MDIZ2T5G", name="bpm")
     if not bpm.connected:
         bpm.wait_for_connection()
     stat = bpm.trigger()

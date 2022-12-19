@@ -27,12 +27,8 @@ class BpmElementList:
 
 @dataclass
 class BpmElemPlane:
-    def __init__(self, pos_raw, rms_raw):
-        self.pos_raw = pos_raw
-        self.rms_raw = rms_raw
-
-    pos_raw: int
-    rms_raw: int
+    pos_raw: float
+    rms_raw: float
 
 
 @dataclass
@@ -47,7 +43,7 @@ class BpmElem:
 
     x: BpmElemPlane
     y: BpmElemPlane
-    intensity_z: int
-    intensity_s: int
-    stat: int
-    gain_raw: int
+    intensity_z: float
+    intensity_s: float
+    stat: float
+    gain_raw: float
