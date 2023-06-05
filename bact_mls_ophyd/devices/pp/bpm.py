@@ -1,15 +1,16 @@
 """BPM preprocessed data
 """
-import jsons
-import numpy as np
-
-# from bact_bessyii_mls_ophyd.devices.utils.derived_signal_bpm import BPMWaveform
-from bact_bessyii_mls_ophyd.devices.process.bpm_packed_data import packed_data_to_named_array
-from ..raw.bpm import BPM as BPMR
-from .bpmElem import BpmElementList, BpmElemPlane, BpmElem
 import functools
-from ophyd import Component as Cpt, Device, EpicsSignalRO, Signal, Kind
-from ophyd.status import SubscriptionStatus, AndStatus
+
+import numpy as np
+from bluesky import RunEngine
+from bluesky.plans import count
+from databroker import catalog
+from ophyd import Component as Cpt, Signal, Kind
+
+from bact_bessyii_mls_ophyd.devices.process.bpm_packed_data import packed_data_to_named_array
+from bact_mls_ophyd.devices.pp.bpmElem import BpmElementList, BpmElemPlane, BpmElem
+from bact_mls_ophyd.devices.raw.bpm import BPM as BPMR
 
 
 def read_orbit_data():
@@ -28,7 +29,6 @@ def bpm_config_data():
 
     from pyml import mlsinit
     import pandas as pd
-    import numpy as np
 
     columns = [
         "name",
@@ -82,10 +82,11 @@ class BPM(BPMR):
     #  @Member n_valid_bpms out of n_elements these are only active....
     #  todo: why set this on the model level?
     n_valid_bpms = Cpt(Signal, name="n_valid_bpms", value=-1, kind=Kind.config)
+    # n_valid_bpms = Cpt(Signal, name="n_valid_bpms", value=255, kind=Kind.config)
 
-    #  @Member ds: it is a signal componenet and it does .....
-    #  A componenet is a descriptor representing a device component (or signal)
-    ds = Cpt(Signal, name="ds", value=np.nan, )  # kind=Kind.config
+    #  @Member ds: position of the beam position monitor at the longitudinal coordinate
+    #  A component is a descriptor representing a device component (or signal)
+    ds = Cpt(Signal, name="ds", value=np.nan)  # kind=Kind.config
     #  @Member indices a signal which determines the index .... what is inside indices
     indices = Cpt(Signal, name="indices", value=np.nan, kind=Kind.config)
     names = Cpt(Signal, name="names", value=np.nan, kind=Kind.config)
@@ -96,11 +97,10 @@ class BPM(BPMR):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         self.standardConfiguration()
 
     def stage(self):
-        assert(self.n_valid_bpms.get() > 0)
+        assert (self.n_valid_bpms.get() > 0)
         super().stage()
 
     # member function standardConfiguration
@@ -115,7 +115,7 @@ class BPM(BPMR):
         rec = bpm_config_data()
         self.ds.put(rec.s.values)
         indices = rec.idx.values - 1
-        self.configure(dict(names=rec.index.values, indices=indices, ))
+        self.configure(dict(names=rec.index.values, indices=indices, n_valid_bpms=len(rec.idx.values)))
         return
 
     #
@@ -148,12 +148,12 @@ class BPM(BPMR):
         n_channels = 8
         signal_name = self.name + "_packed_data"
         bpm_packed_data_chunks = np.transpose(np.reshape(data[signal_name]['value'], (n_channels, -1)))
-        bpm_packed_data_chunks = np.transpose(np.reshape(data[signal_name]['value'], (n_channels, -1)))
         bpm_packed_data_chunks = bpm_packed_data_chunks[:self.n_valid_bpms.get()]
-        for chunk in bpm_packed_data_chunks:
+        for name, chunk in zip(self.names.get(), bpm_packed_data_chunks):
             bpm_elem_plane_x = BpmElemPlane(chunk[0], chunk[1])
             bpm_elem_plane_y = BpmElemPlane(chunk[2], chunk[3])
-            bpm_elem = BpmElem(bpm_elem_plane_x, bpm_elem_plane_y, chunk[4], chunk[5], chunk[6], chunk[7])
+            bpm_elem = BpmElem(x=bpm_elem_plane_x, y=bpm_elem_plane_y, intensity_z=chunk[4], intensity_s=chunk[5],
+                               stat=chunk[6], gain_raw=chunk[7], name=name)
             bpm_element_list.add_bpm_elem(bpm_elem)
         bpm_data = {self.name + "_elem_data": bpm_element_list.to_dict(data['bpm_packed_data']['timestamp'])}
         data.update(BpmElementList().to_json(bpm_data))
@@ -177,5 +177,27 @@ if __name__ == "__main__":
     stat.wait(3)
     data = bpm.read()
     print("# ---- data")
-    print(data)
+    print(data['bpm_elem_data']['value'])
+    # md = dict(
+    #     machine="MLS",
+    #     nickname="bpm_test",
+    #     measurement_target="read bpm data",
+    #     target="see if bpm data can be read by RunEngine",
+    #     comment="currently only testing if data taking works",
+    # )
+    # lt = LiveTable(
+    #     [
+    #         bpm.count.name
+    #     ]
+    # )
+    # initialize RE  and insert into DB using count plan (
+    RE = RunEngine({})
+    db = catalog["heavy"]
+    RE.subscribe(db.v1.insert)
     print("# ---- end data ")
+    RE(count([bpm], 1))
+
+    # read back from database
+    run = db[-1]
+    print(run.metadata['stop'])
+    data = run.primary.read()

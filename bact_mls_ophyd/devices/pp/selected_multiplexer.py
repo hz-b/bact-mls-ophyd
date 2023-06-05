@@ -1,19 +1,10 @@
-import sys
 import threading
 import time
 
-import numpy as np
 from bact2.ophyd.devices.raw.multiplexer_state_machine import MuxerState
 from bact2.ophyd.devices.raw.quad_list import quadrupoles
-from bact2.ophyd.devices.utils import signal_with_validation, ReachedSetPoint
-from bluesky.protocols import Movable
-from ophyd import (Component as Cpt, Device, EpicsSignal, EpicsSignalRO, Kind, PVPositionerPC, Signal, )
-
-from ophyd.device import DynamicDeviceComponent as DDC, Component
+from ophyd import (Component as Cpt, EpicsSignal, EpicsSignalRO, Kind, PVPositionerPC, Signal, )
 from ophyd.status import AndStatus, SubscriptionStatus, Status
-
-t_super = PVPositionerPC
-t_super = ReachedSetPoint.ReachedSetpointEPS
 
 _muxer_off = "Mux OFF"
 _request_off = "Off"
@@ -25,9 +16,9 @@ class MultiplexerSelector(_t_super):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # use a long validation time let's see if there are more changes
-        validation_time = self.validation_time.get()
-        self.mux_switch_validate = signal_with_validation.FlickerSignal(self.readback, timeout=3,
-            validation_time=validation_time)
+        # validation_time = self.validation_time.get()
+        # self.mux_switch_validate = signal_with_validation.FlickerSignal(self.readback, timeout=3,
+        # validation_time=validation_time)
         self._timestamp = time.time()
         self.state_machine = MuxerState()
         self.lock = threading.Lock()
@@ -36,32 +27,19 @@ class MultiplexerSelector(_t_super):
     readback = Cpt(EpicsSignal, ":name")
 
     #: store the one that was explicitily set
-    selected = Cpt(Signal, name="selected", value="non stored")
+    setpoint = Cpt(Signal, name="setpoint", value="non stored")
 
-    #: setpoint as index number
-    setpoint_num = Cpt(Signal, name="setpoint_num", value=-1)
-
-    #: selected as index number
-    selected_num = Cpt(Signal, name="selected_num", value=-1)
-
-    #: switch power converter off ?
-    off = Cpt(EpicsSignal, ":off", name="off")
+    #: disconnect from any selected element ?
+    disconnect = Cpt(EpicsSignal, ":off", name="disconnect", kind=Kind.omitted)
 
     #: are the relays enabled?
-    relay = Cpt(EpicsSignalRO, ":disable")
+    relay = Cpt(EpicsSignalRO, ":disable", kind=Kind.omitted)
 
     #: Todo: check if it is still working!
-    relay_ps = Cpt(EpicsSignalRO, ":relay_ps")
+    relay_ps = Cpt(EpicsSignalRO, ":relay_ps", kind=Kind.omitted)
 
-    #: How long did it take to set the value
-    set_time = Cpt(Signal, name="set_time", value=-1)
-
-    #: How long did it take to set the value
-    last_wait = Cpt(Signal, name="last_wait", value=-1)
-
-    validation_time = Cpt(Signal, name="validation_time", value=2, kind=Kind.config)
-
-    state = Cpt(Signal, name="state", value="undefined")
+    #: state of the internally used state machine
+    state = Cpt(Signal, name="state", value="undefined", kind=Kind.omitted)
 
     settle_time = Cpt(Signal, name="settle_time", value=0.5, kind=Kind.config)
     timeout = Cpt(Signal, name="timeout", value=10.0, kind=Kind.config)
@@ -83,7 +61,7 @@ class MultiplexerSelector(_t_super):
             self.state_machine.set_off()
         elif currently_set in magnet_names:
             self.state_machine.set_selected()
-            self.selected.put(currently_set)
+            self.setpoint.put(currently_set)
         else:
             self.state_machine.failed()
             txt = f"currently set name {currently_set} is unknown"
@@ -94,25 +72,25 @@ class MultiplexerSelector(_t_super):
         self.log.debug("Initialised  muxer representation to"
                        "selected = {currently_set} state machine {state}")
 
-    def checkMuxSwitches(self, *, selected, old_value, value, **kwargs):
+    def checkMuxSwitches(self, *, setpoint, old_value, value, **kwargs):
         """Callback to follow that mux switches happen as expected
 
         The muxer behaves in the following manner:
 
-        * If it was off:
-            1. response: the name of the selceted device
-            2. response: Mux Off
+        * If it was disconnected:
+            1. response: the name of the selected device
+            2. response: "Mux Off"
             3. response: the name of the selected device
 
-        * If a power converter was selected
-            1. response: Mux Off
+        * If it was connected to a device
+            1. response: "Mux Off"
             2. response: the name of the selected device
 
         * And then there is one more thing:
            1. It has directly set from the last selected device
               to the requested one
 
-          Typically not used as the device checks that now action is required
+          Typically not used as the device checks if an action is required
 
         Thou shall use state machines!
         How true it is
@@ -125,11 +103,11 @@ class MultiplexerSelector(_t_super):
         if self.state_machine.is_failed:
             raise MuxerSwitchError("State machine in failed state:" + t_values_txt)
 
-        txt_expected_target = (f"With {t_values_txt}: expected {selected} as new (and final) value")
+        txt_expected_target = (f"With {t_values_txt}: expected {setpoint} as new (and final) value")
 
         if self.state_machine.is_off:
-            if value == selected:
-                self.log.info("Setting state machine to is_selected: selected {selected} value {value}")
+            if value == setpoint:
+                self.log.info("Setting state machine to is_selected: selected {setpoint} value {value}")
                 self.state_machine.set_selected()
                 return True
             else:
@@ -138,8 +116,8 @@ class MultiplexerSelector(_t_super):
                 raise MuxerSwitchError(txt)
 
         if self.state_machine.is_intermediate:
-            if value == selected:
-                self.log.info("Setting state machine to is_selected: selected {selected} value {value}")
+            if value == setpoint:
+                self.log.info("Setting state machine to is_selected: selected {setpoint} value {value}")
                 self.state_machine.set_selected()
                 return True
             else:
@@ -149,7 +127,7 @@ class MultiplexerSelector(_t_super):
 
         if self.state_machine.is_off_for_switch:
             if value == _muxer_off:
-                self.log.info(f"Setting state machine to off_for_switch: selected {selected} value {value}")
+                self.log.info(f"Setting state machine to off_for_switch: selected {setpoint} value {value}")
                 self.state_machine.set_intermediate()
                 # One more turn to go to
                 return False
@@ -206,8 +184,8 @@ class MultiplexerSelector(_t_super):
             with self.lock:
                 try:
 
-                    flag = self.checkMuxSwitches(selected=selected_device_name, value=value, old_value=old_value,
-                        **kwargs, )
+                    flag = self.checkMuxSwitches(setpoint=selected_device_name, value=value, old_value=old_value,
+                                                 **kwargs, )
                 except Exception as exc:
                     status.set_exception(exc)
                     self.state_machine.failed()
@@ -225,16 +203,11 @@ class MultiplexerSelector(_t_super):
 
             num = quadrupoles.index(val)
             self.log.info("Storing last set to {} as num {}".format(val, num))
-            self.selected.put(val)
-            self.selected_num.put(num)
-
-            now = time.time()
-            dt = now - self._timestamp
-            self.set_time.set(dt)
-            self.log.debug(f" selected {selected_device_name} state {self.state_machine.state}: required dt {dt}")
+            self.setpoint.put(val)
+            self.log.debug(f" selected {selected_device_name} state {self.state_machine.state}")
 
         status_mux = SubscriptionStatus(self.readback, cb, run=False, timeout=self.timeout.get(),
-            settle_time=self.settle_time.get(), )
+                                        settle_time=self.settle_time.get(), )
         status_mux.add_callback(store_selected)
 
         if self.state_machine.is_selected:
@@ -272,12 +245,12 @@ class MultiplexerSelector(_t_super):
             return stat
 
         self.state_machine.set_off()
-        return AndStatus(self.off.set(1), self.selected.set(_muxer_off))
+        return AndStatus(self.disconnect.set(1), self.setpoint.set(_muxer_off))
 
-    def switchPowerconverter(self, name):
+    def connect_to_selected_element(self, name):
         """select the power converter to pack on
 
-        Now directly switching to the power converter required
+        Now directly switching to the required element
         """
         self.log.info(f"Multiplexer.switchPowerconverter: Switching multiplexer to {name}")
 
@@ -324,34 +297,32 @@ class MultiplexerSelector(_t_super):
                 self.log.error(f"Trying to lookup {value} in sequence {quadrupoles}")
                 raise exc
 
-        self.setpoint_num.put(num)
-        self.selected.put(value)
+        self.setpoint.put(value)
         del num
 
         self.checkPowerconverterMembers()
-        self.mux_switch_validate.tic()
         # Check if the power converter is already selected ...
-        selected = self.readback.get()
-        if selected == value:
+        setpoint = self.readback.get()
+        if setpoint == value:
             self.log.info("Not switching muxer already at {}".format(value))
             status = Status()
             status.set_finished()
             return status
 
-        self.log.info("Switching muxer from {} to {}".format(selected, value))
+        self.log.info("Switching muxer from {} to {}".format(setpoint, value))
 
         def cb_for_state_engine(success=False):
             if not success:
                 self.state_machine.failed()
 
-        status = self.switchPowerconverter(value)
+        status = self.connect_to_selected_element(value)
         status.add_callback(cb_for_state_engine)
         return status
 
     def trigger(self):
         stat_rbk = self.readback.trigger()
         stat_relay = self.relay.trigger()
-        stat_off = self.off.trigger()
+        stat_off = self.disconnect.trigger()
 
         return AndStatus(AndStatus(stat_rbk, stat_relay), stat_off)
 
@@ -368,7 +339,7 @@ class MultiplexerSelector(_t_super):
             return
 
         self.log.warning('Switching multiplexer off: power converter considered off')
-        self.off.put(1, use_complete=False)
+        self.disconnect.put(1, use_complete=False)
 
     def switchOff(self):
         cls_name = self.__class__.__name__

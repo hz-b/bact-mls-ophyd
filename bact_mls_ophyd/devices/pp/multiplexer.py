@@ -1,3 +1,6 @@
+from typing import Sequence
+
+import ophyd.status
 from bact2.ophyd.devices.utils import signal_with_validation, ReachedSetPoint
 from ophyd import (
     Component as Cpt,
@@ -9,9 +12,6 @@ from .multiplexer_wrapper import MultiplexerPCWrapper
 from .power_converter import MultiplexerPowerConverter
 from .selected_multiplexer import MultiplexerSelector
 
-t_super = PVPositionerPC
-t_super = ReachedSetPoint.ReachedSetpointEPS
-
 _muxer_off = "Mux OFF"
 _request_off = "Off"
 
@@ -22,7 +22,7 @@ class Multiplexer(Device):
     This is a multipexer compound which includes:
         a selected multiplexer
         a power converter
-        and a list of quad names (activate)
+        and a list of power converter's names (activate)
     """
     # list of member attributes:
     selected_multiplexer = Cpt(MultiplexerSelector, "PMUXZR", name="selected_multiplexer")
@@ -62,5 +62,5 @@ class Multiplexer(Device):
         data = super().describe()
         return data
 
-    def get_power_converter_names(self):
-        return self.wrapper.get_pc_signal_names()
+    def get_element_names(self) -> Sequence[str]:
+        return self.wrapper.get_element_names()

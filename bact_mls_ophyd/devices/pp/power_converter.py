@@ -26,10 +26,10 @@ _t_super = PVPositionerPC
 class MultiplexerPowerConverter(t_super):
     readback = Cpt(EpicsSignal, ":rdbk")
     setpoint = Cpt(EpicsSignal, ":set")
-    switch = Cpt(EpicsSignal, ":cmd1")
+    # switch = Cpt(EpicsSignal, ":cmd1")
     #: power converter on or off
-    status = Cpt(EpicsSignalRO, ":stat1")
-    no_error = Cpt(EpicsSignalRO, ":stat2")
+    status = Cpt(EpicsSignalRO, ":stat1", kind=Kind.omitted)
+    no_error = Cpt(EpicsSignalRO, ":stat2", kind=Kind.omitted)
 
     #: current that is small enough that switch off can be made
     tolerable_zero_current = Cpt(Signal, name="tolerable_error", value=20e-3, kind=Kind.config)

@@ -1,6 +1,7 @@
 import sys
 import threading
 import time
+from typing import Sequence
 
 import numpy as np
 from bact2.ophyd.devices.raw.multiplexer_state_machine import MuxerState
@@ -42,5 +43,9 @@ class MultiplexerPCWrapper(Device):
         default_read_attrs=(),
     )
 
-    def get_pc_signal_names(self):
-        return self.pcs.signal_names
+    def get_element_names(self) -> Sequence[str]:
+        """
+        Returns:
+            the names of the elements the multiplexer can connect to
+        """
+        return self.pcs.component_names
