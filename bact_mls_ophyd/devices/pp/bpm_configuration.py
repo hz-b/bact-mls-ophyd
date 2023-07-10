@@ -78,7 +78,7 @@ def read_from_file_insert_in_database(file_path):
     collection.insert_one(asdict(bpm_list))
 
 
-def read_from_database():
+def get_bpm_configuration():
     # Retrieve the document from the MongoDB collection
     document = collection.find_one()
 
@@ -97,7 +97,7 @@ def read_from_database():
 
 if __name__ == '__main__':
     # # Read from database
-    # retrieved_bpm_list = read_from_database()
+    # retrieved_bpm_list = get_bpm_configuration()
     #
     # # Print the retrieved BpmConfigList object
     # print(retrieved_bpm_list)
