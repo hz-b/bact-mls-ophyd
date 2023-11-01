@@ -86,9 +86,9 @@ def bpm_config_data():
             index=columns, data=mlsinit.bpm, dtype=object
         ).T.set_index("name")
 
-        bpm_data = mml_bpm_data.merge(ref_orbit, left_index=True, right_index=True)
-        bpm_data = bpm_data.infer_objects()
-        return bpm_data
+        # bpm_data = mml_bpm_data.merge(ref_orbit, left_index=True, right_index=True)
+        # bpm_data = bpm_data.infer_objects()
+        # return bpm_data
 
 
 class BPM(BPMR):
