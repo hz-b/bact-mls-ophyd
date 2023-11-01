@@ -13,5 +13,5 @@ repository = "https://github.com/hz-b/bact-mls-ophyd"
 keywords = []
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.11"
+python = ">=3.7"
 ophyd  = ">=1.5"
