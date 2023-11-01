@@ -8,8 +8,9 @@ version = "0.0.1"
 description = "Ophyd devices for metrology light source."
 authors = [ "Pierre Schnizer", "Waheedullah Sulaiman Khail"]
 license = "GPL-3.0"
-homepage = ""
-repository = "https://github.com/hz-b/bact-mls-ophyd"
+homepage = ""https://github.com/hz-b/bact-mls-ophyd""
+repository = "https://github.com/hz-b/bact-mls-ophyd.git"
+documetnation = "https://github.com/hz-b/bact-mls-ophyd"
 keywords = []
 
 [tool.poetry.dependencies]
