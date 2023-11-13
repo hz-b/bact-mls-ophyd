@@ -8,29 +8,21 @@ from ophyd.areadetector.base import ad_group
 from ophyd import Component as Cpt, Device, Kind, Signal
 from ophyd.device import DynamicDeviceComponent as DDC
 
+def load_quad_names():
+    import numpy as np
+    from importlib.resources import files
 
-quad_prefixes_q1 = [
-    # First short
-    "Q1P1K1RP",
-    "Q1P2K1RP",
-    # second: long
-    "Q1P1L2RP",
-    "Q1P2L2RP",
-    # Third short
-    "Q1P1K3RP",
-    "Q1P2K3RP",
-    # Forth long
-    "Q1P1L4RP",
-    "Q1P2L4RP",
-]
+    module_name = __name__.split('.')[0]
+    archiver_config_file = files(module_name).joinpath("data/quadrupole_names.txt")
 
-quad_prefixes_q2 = [name.replace("Q1", "Q2") for name in quad_prefixes_q1]
-quad_prefixes_q3 = [name.replace("Q1", "Q3") for name in quad_prefixes_q1]
-quad_prefixes = quad_prefixes_q1 + quad_prefixes_q2 + quad_prefixes_q3
+    quad_q1 = np.loadtxt(archiver_config_file, dtype="U40").tolist()
+    quad_q2 = [name.replace("Q1", "Q2") for name in quad_q1]
+    quad_q3 = [name.replace("Q1", "Q3") for name in quad_q1]
+    quad_names = quad_q1 + quad_q2 + quad_q3
+    return quad_names
 
-t_quads = [(name.lower(), name) for name in quad_prefixes]
-quad_names = [elem[0] for elem in t_quads]
 
+quad_names = load_quad_names()
 
 class QuadrupolesCollection(Device, MultiplexerSetMixin):
     """
@@ -40,8 +32,8 @@ class QuadrupolesCollection(Device, MultiplexerSetMixin):
     """
 
     power_converters = DDC(
-        ad_group(ScaledPowerConverter, t_quads, kind=Kind.normal, lazy=False),
-        doc="all quadrupoless ",
+        ad_group(ScaledPowerConverter, [(name, name) for name in quad_names], kind=Kind.normal, lazy=False),
+        doc="all quadrupoles ",
         default_read_attrs=(),
     )
 
