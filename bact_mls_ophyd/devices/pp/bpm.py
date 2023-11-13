@@ -9,9 +9,7 @@ from bluesky.plans import count
 from bact_bessyii_mls_ophyd.devices.process.bpm_packed_data import packed_data_to_named_array
 import functools
 from ophyd import Component as Cpt, Signal, Kind
-from bact_bessyii_ophyd.devices.pp.bpmElem import BpmElementList, BpmElemPlane, BpmElem
-from bact_bessyii_ophyd.devices.raw.bpm import BPM as BPMR
-
+from ..raw.bpm import BPM as BPMR
 
 def read_orbit_data():
     """
@@ -24,7 +22,8 @@ def read_orbit_data():
 
     How nice if one uses MML. Doing in f77 style is a good excuse for building up technical debt.
     """
-    from pyml import mls_data
+    import PyML
+    from PyML import mls_data
     return mls_data.bpm_offsets()
 
 
@@ -37,16 +36,8 @@ def bpm_config_data():
     """
     # BESSY II style
     # bpm_data = mml_bpm_data.reindex(columns=columns + ["offset_x", "offset_y"])
-    # ref_orbit = read_orbit_data()
-    # ref_orbit = pd.DataFrame()
-
-    import pandas as pd
-
-    return pd.DataFrame(read_orbit_data()).rename(columns={"ds": "s"})
-
-    raise ValueError("remove me please")
-    import numpy as np
-    from pyml import mlsinit
+    ref_orbit = read_orbit_data()
+    from PyML import mlsinit
 
     columns = [
         "name",
@@ -72,7 +63,7 @@ def bpm_config_data():
 
     # MLS data
     mml_bpm_data = pd.DataFrame(
-           index=columns, data=mlsinit.bpm, dtype=object
+         index=columns, data=mlsinit.bpm, dtype=object
     ).T.set_index("name")
 
     bpm_data = mml_bpm_data.merge(ref_orbit, left_index=True, right_index=True)
