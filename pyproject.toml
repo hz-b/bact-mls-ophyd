@@ -1,10 +1,12 @@
 [build-system]
-requires = [ "poetry-core>=1.0.0",]
+requires = [ "poetry-core>=1.0.0","ophyd>=1.5", "numpy",
+    #"bact_bessyii_mls_ophyd"
+]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "bact_mls_ophyd"
-version = "0.0.1"
+name = "bact-mls-ophyd"
+version = "0.1.0"
 description = "Ophyd devices for metrology light source."
 authors = [ "Pierre Schnizer", "Waheedullah Sulaiman Khail"]
 license = "GPL-3.0"
