@@ -1,21 +1,19 @@
-import sys
-import threading
-import time
+"""
 
+Todo:
+    check if :mod:bact_bessyii_mls_ophyd.devices.utils.power_converter`
+    can be used
+
+"""
 import numpy as np
-from bact2.ophyd.devices.raw.multiplexer_state_machine import MuxerState
-from bact2.ophyd.devices.raw.quad_list import quadrupoles
-from bact2.ophyd.devices.utils import signal_with_validation, ReachedSetPoint
-from bluesky.protocols import Movable
-from ophyd import (Component as Cpt, Device, EpicsSignal, EpicsSignalRO, Kind, PVPositionerPC, Signal, )
+from bact_bessyii_mls_ophyd.devices.utils import reached_setpoint
+from ophyd import (Component as Cpt, EpicsSignal, EpicsSignalRO, Kind, PVPositionerPC, Signal, )
 
-from ophyd.device import DynamicDeviceComponent as DDC, Component
-from ophyd.status import AndStatus, SubscriptionStatus, Status
+from ophyd.status import AndStatus, Status
 
-from bact_mls_ophyd.devices.pp.selected_multiplexer import MultiplexerSelector
 
 t_super = PVPositionerPC
-t_super = ReachedSetPoint.ReachedSetpointEPS
+t_super = reached_setpoint.ReachedSetpointEPS
 
 _muxer_off = "Mux OFF"
 _request_off = "Off"
