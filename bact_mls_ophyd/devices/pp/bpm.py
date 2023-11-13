@@ -2,7 +2,6 @@
 """
 import numpy as np
 import pandas as pd
-from bact2.ophyd.devices.process import bpm_parameters
 from bluesky import RunEngine
 from databroker import catalog
 from bluesky.plans import count
@@ -10,10 +9,7 @@ from bluesky.plans import count
 from bact_bessyii_mls_ophyd.devices.process.bpm_packed_data import packed_data_to_named_array
 import functools
 from ophyd import Component as Cpt, Signal, Kind
-from custom.bessyii.ophyd.bact_bessy_ophyd.devices.pp import bpm_configuration
-from custom.bessyii.ophyd.bact_bessy_ophyd.devices.pp.bpmElem import BpmElementList, BpmElemPlane, BpmElem
-from custom.bessyii.ophyd.bact_bessy_ophyd.devices.raw.bpm import BPM as BPMR
-
+from ..raw.bpm import BPM as BPMR
 
 def read_orbit_data():
     """
@@ -26,16 +22,9 @@ def read_orbit_data():
 
     How nice if one uses MML. Doing in f77 style is a good excuse for building up technical debt.
     """
-    # from pyml import mls_data
-    # return mls_data.bpm_offsets()
-    # TODO:
-    tmp =bpm_parameters.create_bpm_config()
-    # TODO: uncommit below two lines once discussed with Pierre
-    # retrieved_bpm_list = bpm_configuration.get_bpm_configuration()
-    # bpm_config_data_as_data_frame = pd.DataFrame(retrieved_bpm_list.bpmConfigList)
-    df = pd.DataFrame(tmp)
-    return df
-    # return bpm_config_data_as_data_frame
+    import PyML
+    from PyML import mls_data
+    return mls_data.bpm_offsets()
 
 
 @functools.lru_cache(maxsize=1)
@@ -47,16 +36,8 @@ def bpm_config_data():
     """
     # BESSY II style
     # bpm_data = mml_bpm_data.reindex(columns=columns + ["offset_x", "offset_y"])
-    # ref_orbit = read_orbit_data()
-    # ref_orbit = pd.DataFrame()
-
-    import pandas as pd
-
-    return pd.DataFrame(read_orbit_data()).rename(columns={"ds": "s"})
-
-    raise ValueError("remove me please")
-    import numpy as np
-    from pyml import mlsinit
+    ref_orbit = read_orbit_data()
+    from PyML import mlsinit
 
     columns = [
         "name",
@@ -80,15 +61,14 @@ def bpm_config_data():
     ]
 
 
-    if False:
-        # MLS data
-        mml_bpm_data = pd.DataFrame(
-            index=columns, data=mlsinit.bpm, dtype=object
-        ).T.set_index("name")
+    # MLS data
+    mml_bpm_data = pd.DataFrame(
+         index=columns, data=mlsinit.bpm, dtype=object
+    ).T.set_index("name")
 
-        # bpm_data = mml_bpm_data.merge(ref_orbit, left_index=True, right_index=True)
-        # bpm_data = bpm_data.infer_objects()
-        # return bpm_data
+    bpm_data = mml_bpm_data.merge(ref_orbit, left_index=True, right_index=True)
+    bpm_data = bpm_data.infer_objects()
+    return bpm_data
 
 
 class BPM(BPMR):
