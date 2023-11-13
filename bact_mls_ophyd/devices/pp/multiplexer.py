@@ -1,12 +1,6 @@
 from typing import Sequence
 
-import ophyd.status
-from bact2.ophyd.devices.utils import signal_with_validation, ReachedSetPoint
-from ophyd import (
-    Component as Cpt,
-    Device,
-    PVPositionerPC
-)
+from ophyd import Component as Cpt, Device
 
 from .multiplexer_wrapper import MultiplexerPCWrapper
 from .power_converter import MultiplexerPowerConverter
@@ -24,8 +18,11 @@ class Multiplexer(Device):
         a power converter
         and a list of power converter's names (activate)
     """
+
     # list of member attributes:
-    selected_multiplexer = Cpt(MultiplexerSelector, "PMUXZR", name="selected_multiplexer")
+    selected_multiplexer = Cpt(
+        MultiplexerSelector, "PMUXZR", name="selected_multiplexer"
+    )
     power_converter = Cpt(
         MultiplexerPowerConverter,
         "QSPAZR",
