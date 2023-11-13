@@ -1,0 +1,12 @@
+# First short
+Q1P1K1RP
+Q1P2K1RP
+# second: long
+Q1P1L2RP
+Q1P2L2RP
+# Third short
+Q1P1K3RP
+Q1P2K3RP
+# Forth long
+Q1P1L4RP
+Q1P2L4RP
