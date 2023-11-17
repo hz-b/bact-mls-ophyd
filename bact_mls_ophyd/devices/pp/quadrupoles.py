@@ -47,9 +47,3 @@ class QuadrupolesCollection(Device, MultiplexerSetMixin):
     _default_read_attrs = ("sel",)
 
 
-if __name__ == "__main__":
-    qc = QuadrupolesCollection(name="qc")
-    if not qc.connected:
-        qc.wait_for_connection()
-
-    print(qc.read())
