@@ -6,6 +6,7 @@ from bluesky import RunEngine
 from databroker import catalog
 from bluesky.plans import count
 
+from bact_device_models.devices.bpm_elem import BpmElem, BpmElemPlane, BpmElementList
 from bact_bessyii_mls_ophyd.devices.process.bpm_packed_data import packed_data_to_named_array
 import functools
 from ophyd import Component as Cpt, Signal, Kind
