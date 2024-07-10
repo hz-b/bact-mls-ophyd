@@ -25,18 +25,18 @@ jobs:
         cache-dependency-path: |
            **/pyproject.toml
            **/requirements*.txt
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip wheel
-        python -m pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install .
     - name: Install bact dependencies bact-device-models
       run: | 
            t_dir=bact-device-models
            if [ -f $t_dir/requirements.txt ]; then pip install -r $t_dir/requirements.txt; fi
            # make it a path, otherwise it searches pypi repo
            pip install $t_dir/
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip wheel
+        python -m pip install flake8 pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install .
 
     - name: Install package
       run: |
